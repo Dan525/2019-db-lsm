@@ -12,7 +12,7 @@ import java.util.TreeMap;
 
 public class MyDAO implements DAO  {
 
-    private NavigableMap<ByteBuffer, Record> db = new TreeMap<>();
+    private final NavigableMap<ByteBuffer, Record> db = new TreeMap<>();
 
     @NotNull
     @Override
