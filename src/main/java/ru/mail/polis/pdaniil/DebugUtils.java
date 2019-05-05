@@ -25,13 +25,13 @@ public final class DebugUtils {
         final int myShowLimit = my.limit() < MAX_BYTES_TO_SHOW ? my.limit() : MAX_BYTES_TO_SHOW;
 
         for (int i = 0; i < myShowLimit; i++) {
-            log.info(String.format("%s%s%n", my.get(i), (i == myShowLimit - 1 ? "" : ", ")));
+            log.info(String.format("%s%s%n", my.get(i), i == myShowLimit - 1 ? "" : ", "));
         }
 
         final int refShowLimit = reference.limit() < MAX_BYTES_TO_SHOW ? reference.limit() : MAX_BYTES_TO_SHOW;
 
         for (int i = 0; i < refShowLimit; i++) {
-            log.info(String.format("%s%s%n%n", reference.get(i), (i == refShowLimit - 1 ? "" : ", ")));
+            log.info(String.format("%s%s%n%n", reference.get(i), i == refShowLimit - 1 ? "" : ", "));
         }
     }
 
