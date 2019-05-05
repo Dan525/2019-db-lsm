@@ -20,8 +20,8 @@ public class SSTableMmap extends SSTable implements Table {
     private final ByteBuffer dataArray;
     private final long size;
 
-    /**
-     * MMapped SSTable implementation
+    /** MMapped SSTable implementation
+     *
      * @param file directory of SSTable files
      * @throws IOException if unable to read SSTable files
      */
@@ -115,12 +115,12 @@ public class SSTableMmap extends SSTable implements Table {
         cellDuplicate.position((int) offset);
         cellDuplicate.slice();
 
-        ByteBuffer keyDuplicate = cellDuplicate.duplicate();
+        final ByteBuffer keyDuplicate = cellDuplicate.duplicate();
         final long keySize = keyDuplicate.getLong();
 
         keyDuplicate.limit((int) (keyDuplicate.position() + keySize));
 
-        int timeStampOff = keyDuplicate.limit();
+        final int timeStampOff = keyDuplicate.limit();
 
         final ByteBuffer key = keyDuplicate.slice();
 

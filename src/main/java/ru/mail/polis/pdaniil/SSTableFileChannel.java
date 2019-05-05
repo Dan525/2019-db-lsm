@@ -16,8 +16,8 @@ public class SSTableFileChannel extends SSTable implements Table {
     private final int rowCount;
     private final long size;
 
-    /**
-     * FileChannel.read() SSTable implementation
+    /** FileChannel.read() SSTable implementation
+     *
      * @param file directory of SSTable files
      * @throws IOException if unable to read SSTable files
      */
@@ -98,7 +98,7 @@ public class SSTableFileChannel extends SSTable implements Table {
 
             offset += Long.BYTES;
 
-            ByteBuffer keyBuffer = ByteBuffer.allocate((int) keySize);
+            final ByteBuffer keyBuffer = ByteBuffer.allocate((int) keySize);
             channel.read(keyBuffer, offset);
 
             return keyBuffer.rewind();
@@ -145,7 +145,7 @@ public class SSTableFileChannel extends SSTable implements Table {
 
                 offset += Long.BYTES;
 
-                ByteBuffer valueBuffer = ByteBuffer.allocate((int) valueSize);
+                final ByteBuffer valueBuffer = ByteBuffer.allocate((int) valueSize);
                 channel.read(valueBuffer, offset);
                 final ByteBuffer value = valueBuffer.rewind();
 

@@ -10,9 +10,19 @@ import ru.mail.polis.Record;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.*;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.List;
 
 public class MyDAO implements DAO {
 
@@ -27,8 +37,7 @@ public class MyDAO implements DAO {
     private Table memTable;
     private final List<Table> ssTableList;
 
-    /**
-     * DAO Implementation for LSM Database
+    /** DAO Implementation for LSM Database
      *
      * @param tablesDir directory to store SSTable files
      * @param maxHeap max memory, allocated for JVM
