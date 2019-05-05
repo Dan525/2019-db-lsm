@@ -16,7 +16,7 @@ public class SSTableFileChannel extends SSTable implements Table {
     private final int rowCount;
     private final long size;
 
-    /** FileChannel.read() SSTable implementation
+    /** FileChannel.read() SSTable implementation.
      *
      * @param file directory of SSTable files
      * @throws IOException if unable to read SSTable files

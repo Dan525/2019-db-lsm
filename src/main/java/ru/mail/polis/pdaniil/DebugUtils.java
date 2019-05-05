@@ -13,7 +13,7 @@ public final class DebugUtils {
     private DebugUtils() {
     }
 
-    /** Print in console bytes of two ByteBuffers to compare
+    /** Print in console bytes of two ByteBuffers to compare.
      *
      * @param my bytebuffer to check
      * @param reference reference bytebuffer
@@ -22,20 +22,20 @@ public final class DebugUtils {
     public static void compareBytes(final ByteBuffer my, final ByteBuffer reference, final String tag) {
         log.info(String.format("%n~~~ %s%n", tag));
 
-        final int myKeyShowLimit = my.limit() < MAX_BYTES_TO_SHOW ? my.limit() : MAX_BYTES_TO_SHOW;
+        final int myShowLimit = my.limit() < MAX_BYTES_TO_SHOW ? my.limit() : MAX_BYTES_TO_SHOW;
 
-        for (int i = 0; i < myKeyShowLimit; i++) {
-            log.info(String.format(my.get(i) + (i == myKeyShowLimit - 1 ? "" : ", ") + "%n"));
+        for (int i = 0; i < myShowLimit; i++) {
+            log.info(String.format("%s%s%n", my.get(i), (i == myShowLimit - 1 ? "" : ", ")));
         }
 
-        final int refKeyShowLimit = my.limit() < MAX_BYTES_TO_SHOW ? my.limit() : MAX_BYTES_TO_SHOW;
+        final int refShowLimit = reference.limit() < MAX_BYTES_TO_SHOW ? reference.limit() : MAX_BYTES_TO_SHOW;
 
-        for (int i = 0; i < refKeyShowLimit; i++) {
-            log.info(String.format(reference.get(i) + (i == refKeyShowLimit - 1 ? "" : ", ") + "%n%n"));
+        for (int i = 0; i < refShowLimit; i++) {
+            log.info(String.format("%s%s%n%n", reference.get(i), (i == refShowLimit - 1 ? "" : ", ")));
         }
     }
 
-    /** Show in console info about cell:
+    /** Show in console info about cell.
      * - is cell removed;
      * - timestamp
      *
@@ -47,7 +47,7 @@ public final class DebugUtils {
                 cell.getValue().getTimeStamp()));
     }
 
-    /** Show in console info about flushing:
+    /** Show in console info about flushing.
      * - Current memTable size;
      * - Heap free
      *

@@ -37,7 +37,7 @@ public class MyDAO implements DAO {
     private Table memTable;
     private final List<Table> ssTableList;
 
-    /** DAO Implementation for LSM Database
+    /** DAO Implementation for LSM Database.
      *
      * @param tablesDir directory to store SSTable files
      * @param maxHeap max memory, allocated for JVM

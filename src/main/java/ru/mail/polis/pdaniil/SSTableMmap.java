@@ -20,7 +20,7 @@ public class SSTableMmap extends SSTable implements Table {
     private final ByteBuffer dataArray;
     private final long size;
 
-    /** MMapped SSTable implementation
+    /** MMapped SSTable implementation.
      *
      * @param file directory of SSTable files
      * @throws IOException if unable to read SSTable files
