@@ -1,6 +1,7 @@
 package ru.mail.polis.pdaniil;
 
 import com.google.common.collect.Iterators;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
@@ -14,7 +15,7 @@ public class MemTable implements Table {
     private long size;
 
     @Override
-    public Iterator<Cell> iterator(ByteBuffer from) {
+    public Iterator<Cell> iterator(@NotNull ByteBuffer from) {
 
         Iterator<Map.Entry<ByteBuffer, Value>> entryIter = db.tailMap(from).entrySet().iterator();
 
@@ -22,7 +23,7 @@ public class MemTable implements Table {
     }
 
     @Override
-    public void upsert(ByteBuffer key, ByteBuffer value) {
+    public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) {
         Value prev = db.put(key, Value.of(value));
         if (prev == null) {
             //added new key and value. calc space for them
@@ -37,7 +38,7 @@ public class MemTable implements Table {
     }
 
     @Override
-    public void remove(ByteBuffer key) {
+    public void remove(@NotNull ByteBuffer key) {
         Value prev = db.put(key, Value.tombstone());
         if (prev == null) {
             //Calc key size

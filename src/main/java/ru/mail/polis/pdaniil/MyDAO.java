@@ -13,7 +13,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class MyDAO implements DAO {
 
@@ -38,10 +37,12 @@ public class MyDAO implements DAO {
     @NotNull
     @Override
     public Iterator<Record> iterator(@NotNull ByteBuffer from) throws IOException {
-        List<Iterator<Cell>> ssIterators = ssTableList
-                .stream()
-                .map(t -> t.iterator(from))
-                .collect(Collectors.toList());
+
+        List<Iterator<Cell>> ssIterators = new ArrayList<>();
+
+        for (Table ssTable : ssTableList) {
+            ssIterators.add(ssTable.iterator(from));
+        }
 
         ssIterators.add(memTable.iterator(from));
 
@@ -77,7 +78,7 @@ public class MyDAO implements DAO {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (file.toString().endsWith(TABLE_FILE_SUFFIX)) {
-                    ssTableList.add(new SSTable(file));
+                    ssTableList.add(new SSTableFileChannel(file));
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -135,7 +136,7 @@ public class MyDAO implements DAO {
 
         Path newTable = tablesDir.resolve(tmpFile.toString().replace(TABLE_TMP_FILE_SUFFIX, TABLE_FILE_SUFFIX));
         Files.move(tmpFile, newTable, StandardCopyOption.ATOMIC_MOVE);
-        ssTableList.add(new SSTable(newTable));
+        ssTableList.add(new SSTableFileChannel(newTable));
 
         memTable = new MemTable();
     }

@@ -5,11 +5,13 @@
  */
 package ru.mail.polis.pdaniil;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.LongBuffer;
-import java.nio.MappedByteBuffer;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.*;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,14 +21,16 @@ import java.util.Iterator;
 /**
  * @author daniil_pozdeev
  */
-public class SSTable implements Table {
+public class SSTableMmap implements Table {
+
+    private final MappedByteBuffer mapped;
 
     private final int rowCount;
     private final LongBuffer offsetArray;
     private final ByteBuffer dataArray;
     private final long size;
 
-    public SSTable(Path file) throws IOException {
+    public SSTableMmap(Path file) throws IOException {
 
         MappedByteBuffer mappped = null;
 
@@ -35,6 +39,8 @@ public class SSTable implements Table {
                     .map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
                     .order(ByteOrder.BIG_ENDIAN);
         }
+
+        this.mapped = mappped;
 
         final int rowCountOff = mappped.limit() - Integer.BYTES;
 
@@ -58,7 +64,7 @@ public class SSTable implements Table {
     }
 
     @Override
-    public Iterator<Cell> iterator(ByteBuffer from) {
+    public Iterator<Cell> iterator(@NotNull ByteBuffer from) {
         return new Iterator<>() {
 
             private final int lastIndex = offsetArray.limit() - 1;
@@ -78,13 +84,13 @@ public class SSTable implements Table {
     }
 
     @Override
-    public void upsert(ByteBuffer key, ByteBuffer value) {
-        throw new UnsupportedOperationException("SSTable is immutable");
+    public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) {
+        throw new UnsupportedOperationException("SSTableMmap is immutable");
     }
 
     @Override
-    public void remove(ByteBuffer key) {
-        throw new UnsupportedOperationException("SSTable is immutable");
+    public void remove(@NotNull ByteBuffer key) {
+        throw new UnsupportedOperationException("SSTableMmap is immutable");
     }
 
     @Override

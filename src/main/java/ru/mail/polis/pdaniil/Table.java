@@ -16,7 +16,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface Table {
 
-    public Iterator<Cell> iterator(@NotNull ByteBuffer from);
+    public Iterator<Cell> iterator(@NotNull ByteBuffer from) throws IOException;
 
     public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value);
 
