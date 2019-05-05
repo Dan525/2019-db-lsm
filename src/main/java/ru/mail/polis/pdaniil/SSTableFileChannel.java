@@ -10,19 +10,24 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
-public class SSTableFileChannel implements Table {
+public class SSTableFileChannel extends SSTable implements Table {
 
     private final Path file;
     private final int rowCount;
     private final long size;
 
-    public SSTableFileChannel(Path file) throws IOException {
+    /**
+     * FileChannel.read() SSTable implementation
+     * @param file directory of SSTable files
+     * @throws IOException if unable to read SSTable files
+     */
+    public SSTableFileChannel(final Path file) throws IOException {
 
         this.file = file;
 
         try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
 
-            ByteBuffer rowCountBuffer = ByteBuffer.allocate(Integer.BYTES);
+            final ByteBuffer rowCountBuffer = ByteBuffer.allocate(Integer.BYTES);
             final long rowCountOff = channel.size() - Integer.BYTES;
             channel.read(rowCountBuffer, rowCountOff);
             rowCount = rowCountBuffer.rewind().getInt();
@@ -33,7 +38,7 @@ public class SSTableFileChannel implements Table {
     }
 
     @Override
-    public Iterator<Cell> iterator(@NotNull ByteBuffer from) throws IOException {
+    public Iterator<Cell> iterator(@NotNull final ByteBuffer from) throws IOException {
         return new Iterator<>() {
 
             private final int lastIndex = rowCount - 1;
@@ -58,12 +63,12 @@ public class SSTableFileChannel implements Table {
     }
 
     @Override
-    public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) {
+    public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
         throw new UnsupportedOperationException("SSTableMmap is immutable");
     }
 
     @Override
-    public void remove(@NotNull ByteBuffer key) {
+    public void remove(@NotNull final ByteBuffer key) {
         throw new UnsupportedOperationException("SSTableMmap is immutable");
     }
 
@@ -72,41 +77,22 @@ public class SSTableFileChannel implements Table {
         return size;
     }
 
-    private int findStartIndex(ByteBuffer from, int low, int high) throws IOException {
-        while (low <= high) {
-            int mid = (low + high) / 2;
+    private long receiveOffset(final int index, final FileChannel channel) throws IOException {
 
-            ByteBuffer midKey = parseKey(mid);
-
-            int compare = midKey.compareTo(from);
-
-            if (compare < 0) {
-                low = mid + 1;
-            } else if (compare > 0) {
-                high = mid - 1;
-            } else if (compare == 0) {
-                return mid;
-            }
-        }
-        return low;
-    }
-
-    private long receiveOffset(int index, FileChannel channel) throws IOException {
-
-        ByteBuffer offsetBuffer = ByteBuffer.allocate(Long.BYTES);
+        final ByteBuffer offsetBuffer = ByteBuffer.allocate(Long.BYTES);
         final long offsetOff = channel.size() - Integer.BYTES - Long.BYTES * (rowCount - index);
         channel.read(offsetBuffer, offsetOff);
 
         return offsetBuffer.rewind().getLong();
     }
 
-    private ByteBuffer parseKey(int index) throws IOException {
+    protected ByteBuffer parseKey(final int index) throws IOException {
 
         try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
 
             long offset = receiveOffset(index, channel);
 
-            ByteBuffer keySizeBuffer = ByteBuffer.allocate(Long.BYTES);
+            final ByteBuffer keySizeBuffer = ByteBuffer.allocate(Long.BYTES);
             channel.read(keySizeBuffer, offset);
             final long keySize = keySizeBuffer.rewind().getLong();
 
@@ -119,31 +105,31 @@ public class SSTableFileChannel implements Table {
         }
     }
 
-    private Cell parseCell(int index) throws IOException {
+    protected Cell parseCell(final int index) throws IOException {
 
         try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
 
             long offset = receiveOffset(index, channel);
 
-            ByteBuffer keySizeBuffer = ByteBuffer.allocate(Long.BYTES);
+            final ByteBuffer keySizeBuffer = ByteBuffer.allocate(Long.BYTES);
             channel.read(keySizeBuffer, offset);
             final long keySize = keySizeBuffer.rewind().getLong();
 
             offset += Long.BYTES;
 
-            ByteBuffer keyBuffer = ByteBuffer.allocate((int) keySize);
+            final ByteBuffer keyBuffer = ByteBuffer.allocate((int) keySize);
             channel.read(keyBuffer, offset);
             final ByteBuffer key = keyBuffer.rewind();
 
             offset += keySize;
 
-            ByteBuffer timeStampBuffer = ByteBuffer.allocate(Long.BYTES);
+            final ByteBuffer timeStampBuffer = ByteBuffer.allocate(Long.BYTES);
             channel.read(timeStampBuffer, offset);
             final long timeStamp = timeStampBuffer.rewind().getLong();
 
             offset += Long.BYTES;
 
-            ByteBuffer tombstoneBuffer = ByteBuffer.allocate(Byte.BYTES);
+            final ByteBuffer tombstoneBuffer = ByteBuffer.allocate(Byte.BYTES);
             channel.read(tombstoneBuffer, offset);
             final boolean tombstone = tombstoneBuffer.rewind().get() != 0;
 
@@ -153,7 +139,7 @@ public class SSTableFileChannel implements Table {
 
                 offset += Byte.BYTES;
 
-                ByteBuffer valueSizeBuffer = ByteBuffer.allocate(Long.BYTES);
+                final ByteBuffer valueSizeBuffer = ByteBuffer.allocate(Long.BYTES);
                 channel.read(valueSizeBuffer, offset);
                 final long valueSize = valueSizeBuffer.rewind().getLong();
 

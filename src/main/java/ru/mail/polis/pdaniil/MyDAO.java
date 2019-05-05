@@ -27,7 +27,14 @@ public class MyDAO implements DAO {
     private Table memTable;
     private final List<Table> ssTableList;
 
-    public MyDAO(Path tablesDir, long maxHeap) throws IOException {
+    /**
+     * DAO Implementation for LSM Database
+     *
+     * @param tablesDir directory to store SSTable files
+     * @param maxHeap max memory, allocated for JVM
+     * @throws IOException if unable to read existing SSTable files
+     */
+    public MyDAO(final Path tablesDir, final long maxHeap) throws IOException {
         memTable = new MemTable();
         ssTableList = findVersions(tablesDir);
         this.allowableMemTableSize = (long) (maxHeap * LOAD_FACTOR);
@@ -36,28 +43,29 @@ public class MyDAO implements DAO {
 
     @NotNull
     @Override
-    public Iterator<Record> iterator(@NotNull ByteBuffer from) throws IOException {
+    public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
 
-        List<Iterator<Cell>> ssIterators = new ArrayList<>();
+        final List<Iterator<Cell>> ssIterators = new ArrayList<>();
 
-        for (Table ssTable : ssTableList) {
+        for (final Table ssTable : ssTableList) {
             ssIterators.add(ssTable.iterator(from));
         }
 
         ssIterators.add(memTable.iterator(from));
 
-        UnmodifiableIterator<Cell> mergeSortedIter = Iterators.mergeSorted(ssIterators, Comparator.naturalOrder());
+        final UnmodifiableIterator<Cell> mergeSortedIter =
+                Iterators.mergeSorted(ssIterators, Comparator.naturalOrder());
 
-        Iterator<Cell> collapsedIter = Iters.collapseEquals(mergeSortedIter, cell -> cell.getKey());
+        final Iterator<Cell> collapsedIter = Iters.collapseEquals(mergeSortedIter, cell -> cell.getKey());
 
-        UnmodifiableIterator<Cell> filteredCellIter =
+        final UnmodifiableIterator<Cell> filteredCellIter =
                 Iterators.filter(collapsedIter, cell -> !cell.getValue().isRemoved());
 
-        return Iterators.transform(filteredCellIter, cell -> Record.of(cell.getKey(), cell.getValue().getValue()));
+        return Iterators.transform(filteredCellIter, cell -> Record.of(cell.getKey(), cell.getValue().getData()));
     }
 
     @Override
-    public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) throws IOException {
+    public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) throws IOException {
         memTable.upsert(key.duplicate(), value.duplicate());
         if (memTable.getSize() > allowableMemTableSize) {
             flush();
@@ -65,45 +73,45 @@ public class MyDAO implements DAO {
     }
 
     @Override
-    public void remove(@NotNull ByteBuffer key) throws IOException {
+    public void remove(@NotNull final ByteBuffer key) throws IOException {
         memTable.remove(key.duplicate());
         if (memTable.getSize() > allowableMemTableSize) {
             flush();
         }
     }
 
-    private List<Table> findVersions(Path tablesDir) throws IOException {
-        List<Table> ssTableList = new ArrayList<>();
+    private List<Table> findVersions(final Path tablesDir) throws IOException {
+        final List<Table> ssTables = new ArrayList<>();
         Files.walkFileTree(tablesDir, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
                 if (file.toString().endsWith(TABLE_FILE_SUFFIX)) {
-                    ssTableList.add(new SSTableFileChannel(file));
+                    ssTables.add(new SSTableFileChannel(file));
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        return ssTableList;
+        return ssTables;
     }
 
     private void flush() throws IOException {
         DebugUtils.flushInfo(memTable);
 
-        Path tmpFile = tablesDir.resolve(String.valueOf(System.currentTimeMillis()) + TABLE_TMP_FILE_SUFFIX);
+        final Path tmpFile = tablesDir.resolve(System.currentTimeMillis() + TABLE_TMP_FILE_SUFFIX);
 
         try (FileChannel channel = FileChannel.open(tmpFile,
                 StandardOpenOption.WRITE,
                 StandardOpenOption.CREATE_NEW)) {
 
-            List<Integer> offsetList = new ArrayList<>();
+            final List<Integer> offsetList = new ArrayList<>();
 
-            Iterator<Cell> cellIterator = memTable.iterator(ByteBuffer.allocate(0));
+            final Iterator<Cell> cellIterator = memTable.iterator(ByteBuffer.allocate(0));
 
             while (cellIterator.hasNext()) {
 
                 offsetList.add((int) channel.position());
 
-                Cell cell = cellIterator.next();
+                final Cell cell = cellIterator.next();
 
                 final long keySize = cell.getKey().limit();
                 channel.write(ByteBuffer.allocate(Long.BYTES).putLong(keySize).flip());
@@ -116,16 +124,16 @@ public class MyDAO implements DAO {
                 channel.write(ByteBuffer.allocate(Byte.BYTES).put((byte) (tombstone ? 1 : 0)).flip());
 
                 if (!tombstone) {
-                    final ByteBuffer value = cell.getValue().getValue();
+                    final ByteBuffer value = cell.getValue().getData();
                     final long valueSize = value.limit();
                     channel.write(ByteBuffer.allocate(Long.BYTES).putLong(valueSize).flip());
                     channel.write(ByteBuffer.allocate((int) valueSize).put(value).flip());
                 }
             }
 
-            ByteBuffer offsetByteBuffer = ByteBuffer.allocate(Long.BYTES * offsetList.size());
+            final ByteBuffer offsetByteBuffer = ByteBuffer.allocate(Long.BYTES * offsetList.size());
 
-            for (int offset : offsetList) {
+            for (final int offset : offsetList) {
                 offsetByteBuffer.putLong(offset);
             }
 
@@ -134,7 +142,7 @@ public class MyDAO implements DAO {
             channel.write(ByteBuffer.allocate(Integer.BYTES).putInt(offsetList.size()).flip());
         }
 
-        Path newTable = tablesDir.resolve(tmpFile.toString().replace(TABLE_TMP_FILE_SUFFIX, TABLE_FILE_SUFFIX));
+        final Path newTable = tablesDir.resolve(tmpFile.toString().replace(TABLE_TMP_FILE_SUFFIX, TABLE_FILE_SUFFIX));
         Files.move(tmpFile, newTable, StandardCopyOption.ATOMIC_MOVE);
         ssTableList.add(new SSTableFileChannel(newTable));
 
