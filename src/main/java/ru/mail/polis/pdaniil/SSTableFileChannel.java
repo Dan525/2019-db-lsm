@@ -47,7 +47,7 @@ public class SSTableFileChannel extends SSTable implements Table {
 
             @Override
             public boolean hasNext() {
-                return lastIndex >= position;
+                return position <= lastIndex;
             }
 
             @Override
@@ -86,6 +86,7 @@ public class SSTableFileChannel extends SSTable implements Table {
         return offsetBuffer.rewind().getLong();
     }
 
+    @Override
     protected ByteBuffer parseKey(final int index) throws IOException {
 
         try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
@@ -105,6 +106,7 @@ public class SSTableFileChannel extends SSTable implements Table {
         }
     }
 
+    @Override
     protected Cell parseCell(final int index) throws IOException {
 
         try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
@@ -152,6 +154,10 @@ public class SSTableFileChannel extends SSTable implements Table {
                 return Cell.create(key, Value.of(timeStamp, value));
             }
         }
+    }
+
+    public static Table flush(final Path tablesDir, final Iterator<Cell> cellIterator) throws IOException {
+        return new SSTableFileChannel(writeTable(tablesDir, cellIterator));
     }
 
 }

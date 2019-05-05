@@ -9,25 +9,14 @@ import ru.mail.polis.Record;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 
 public class MyDAO implements DAO {
 
-    private static final String TABLE_FILE_SUFFIX = ".dat";
-    private static final String TABLE_TMP_FILE_SUFFIX = ".tmp";
     private static final double LOAD_FACTOR = 0.05;
 
     private final long allowableMemTableSize;
@@ -90,70 +79,13 @@ public class MyDAO implements DAO {
     }
 
     private List<Table> findVersions(final Path tablesDir) throws IOException {
-        final List<Table> ssTables = new ArrayList<>();
-        Files.walkFileTree(tablesDir, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
-                if (file.toString().endsWith(TABLE_FILE_SUFFIX)) {
-                    ssTables.add(new SSTableFileChannel(file));
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        return ssTables;
+        return SSTable.findVersions(tablesDir);
     }
 
     private void flush() throws IOException {
         DebugUtils.flushInfo(memTable);
 
-        final Path tmpFile = tablesDir.resolve(System.currentTimeMillis() + TABLE_TMP_FILE_SUFFIX);
-
-        try (FileChannel channel = FileChannel.open(tmpFile,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.CREATE_NEW)) {
-
-            final List<Integer> offsetList = new ArrayList<>();
-
-            final Iterator<Cell> cellIterator = memTable.iterator(ByteBuffer.allocate(0));
-
-            while (cellIterator.hasNext()) {
-
-                offsetList.add((int) channel.position());
-
-                final Cell cell = cellIterator.next();
-
-                final long keySize = cell.getKey().limit();
-                channel.write(ByteBuffer.allocate(Long.BYTES).putLong(keySize).flip());
-                channel.write(ByteBuffer.allocate((int) keySize).put(cell.getKey()).flip());
-
-                final long timeStamp = cell.getValue().getTimeStamp();
-                channel.write(ByteBuffer.allocate(Long.BYTES).putLong(timeStamp).flip());
-
-                final boolean tombstone = cell.getValue().isRemoved();
-                channel.write(ByteBuffer.allocate(Byte.BYTES).put((byte) (tombstone ? 1 : 0)).flip());
-
-                if (!tombstone) {
-                    final ByteBuffer value = cell.getValue().getData();
-                    final long valueSize = value.limit();
-                    channel.write(ByteBuffer.allocate(Long.BYTES).putLong(valueSize).flip());
-                    channel.write(ByteBuffer.allocate((int) valueSize).put(value).flip());
-                }
-            }
-
-            final ByteBuffer offsetByteBuffer = ByteBuffer.allocate(Long.BYTES * offsetList.size());
-
-            for (final int offset : offsetList) {
-                offsetByteBuffer.putLong(offset);
-            }
-
-            channel.write(offsetByteBuffer.flip());
-
-            channel.write(ByteBuffer.allocate(Integer.BYTES).putInt(offsetList.size()).flip());
-        }
-
-        final Path newTable = tablesDir.resolve(tmpFile.toString().replace(TABLE_TMP_FILE_SUFFIX, TABLE_FILE_SUFFIX));
-        Files.move(tmpFile, newTable, StandardCopyOption.ATOMIC_MOVE);
-        ssTableList.add(new SSTableFileChannel(newTable));
+        ssTableList.add(SSTableFileChannel.flush(tablesDir, memTable.iterator(ByteBuffer.allocate(0))));
 
         memTable = new MemTable();
     }

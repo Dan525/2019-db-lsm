@@ -48,14 +48,14 @@ public final class DebugUtils {
     }
 
     /** Show in console info about flushing.
-     * - Current memTable size;
+     * - Current table size;
      * - Heap free
      *
-     * @param memTable memTable to flush
+     * @param table table to flush
      */
-    public static void flushInfo(final Table memTable) {
-        log.info(String.format("%n==Flushing==%nCurrent memTable size: %d bytes%nHeap free: %d bytes%n%n",
-                memTable.getSize(),
+    public static void flushInfo(final Table table) {
+        log.info(String.format("%n==Flushing==%nCurrent table size: %d bytes%nHeap free: %d bytes%n%n",
+                table.getSize(),
                 Runtime.getRuntime().freeMemory()));
     }
 

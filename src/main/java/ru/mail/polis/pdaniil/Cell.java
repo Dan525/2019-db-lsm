@@ -26,10 +26,11 @@ public final class Cell implements Comparable<Cell> {
 
     @Override
     public int compareTo(final Cell o) {
-        if (this.getKey().compareTo(o.getKey()) == 0) {
+        final int compareKey = this.getKey().compareTo(o.getKey());
+        if (compareKey == 0) {
             return this.getValue().compareTo(o.getValue());
         }
-        return this.getKey().compareTo(o.getKey());
+        return compareKey;
     }
     
 }

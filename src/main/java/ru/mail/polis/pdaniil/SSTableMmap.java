@@ -106,6 +106,7 @@ public class SSTableMmap extends SSTable implements Table {
         return duplicate.slice();
     }
 
+    @Override
     public ByteBuffer parseKey(final int index) {
         return parseKey(receiveOffset(index));
     }
@@ -140,8 +141,13 @@ public class SSTableMmap extends SSTable implements Table {
         }
     }
 
+    @Override
     protected Cell parseCell(final int index) {
         return parseCell(receiveOffset(index));
+    }
+
+    public static Table flush(final Path tablesDir, final Iterator<Cell> cellIterator) throws IOException {
+        return new SSTableMmap(writeTable(tablesDir, cellIterator));
     }
 
 }
