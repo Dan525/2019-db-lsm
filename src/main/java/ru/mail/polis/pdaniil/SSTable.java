@@ -3,7 +3,13 @@ package ru.mail.polis.pdaniil;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.*;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -38,6 +44,12 @@ public abstract class SSTable {
         return curLow;
     }
 
+    /** Finds versions of SSTables in given directory.
+     *
+     * @param tablesDir directory to find SSTable files.
+     * @return list of SSTable abstractions
+     * @throws IOException if unable to read directory
+     */
     public static List<Table> findVersions(final Path tablesDir) throws IOException {
         final List<Table> ssTables = new ArrayList<>();
         Files.walkFileTree(tablesDir, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
@@ -54,21 +66,21 @@ public abstract class SSTable {
 
     /** Writes SSTable in file.
      *
-     * Each cell is sequentially written in the following format:
+     * <p>Each cell is sequentially written in the following format:
      * - keySize (8 bytes)
      * - key ("keySize" bytes)
      * - timestamp (8 bytes)
-     * - tombstone (1 byte)
+     * - tombstone (1 byte)</p>
      *
-     * If cell has value:
+     * <p>If cell has value:
      * - valueSize (8 bytes)
-     * - value ("valueSize" bytes)
+     * - value ("valueSize" bytes)</p>
      *
-     * This is followed by offsets:
-     * - offset (cellCount * 8 bytes)
+     * <p>This is followed by offsets:
+     * - offset (cellCount * 8 bytes)</p>
      *
-     * At the end of file is cell count:
-     * - cellCount (4 bytes)
+     * <p>At the end of file is cell count:
+     * - cellCount (4 bytes)</p>
      *
      * @param tablesDir directory to write table
      * @param cellIterator iterator over cells, that you want to flush
