@@ -34,7 +34,7 @@ public class MyDAO implements DAO {
      */
     public MyDAO(final Path tablesDir, final long maxHeap) throws IOException {
         memTable = new MemTable();
-        ssTableList = findVersions(tablesDir);
+        ssTableList = SSTable.findVersions(tablesDir);
         this.allowableMemTableSize = (long) (maxHeap * LOAD_FACTOR);
         this.tablesDir = tablesDir;
     }
@@ -76,10 +76,6 @@ public class MyDAO implements DAO {
         if (memTable.getSize() > allowableMemTableSize) {
             flush();
         }
-    }
-
-    private List<Table> findVersions(final Path tablesDir) throws IOException {
-        return SSTable.findVersions(tablesDir);
     }
 
     private void flush() throws IOException {
