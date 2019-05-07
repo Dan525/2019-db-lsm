@@ -15,11 +15,35 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class SSTable {
 
     protected static final String TABLE_FILE_SUFFIX = ".dat";
     protected static final String TABLE_TMP_FILE_SUFFIX = ".tmp";
+    protected static final String FILE_NAME_PREFIX = "table_";
+    protected static final String FILE_NAME_PATTERN = FILE_NAME_PREFIX + "(\\d+)" + TABLE_FILE_SUFFIX;
+    
+    protected final Path file;
+    protected final long size;
+    protected final long version;
+
+    enum Implementation {
+        FILE_CHANNEL_READ,
+        MMAPPED
+    }
+
+    /**
+     * Base implementation of SSTable.
+     * 
+     * @param file directory of SSTable files
+     */
+    public SSTable(final Path file) throws IOException {
+        this.file = file;
+        size = Files.size(file);
+        version = getVersionFromName(file.getFileName().toString());
+    }
 
     protected int findStartIndex(final ByteBuffer from, final int low, final int high) throws IOException {
 
@@ -44,27 +68,60 @@ public abstract class SSTable {
         return curLow;
     }
 
-    /** Finds versions of SSTables in given directory.
+    /** 
+     * Finds versions of SSTables in given directory.
      *
      * @param tablesDir directory to find SSTable files.
+     * @param impl type of SSTable implementation
      * @return list of SSTable abstractions
      * @throws IOException if unable to read directory
      */
-    public static List<Table> findVersions(final Path tablesDir) throws IOException {
+    public static List<Table> findVersions(
+            final Path tablesDir, 
+            final Implementation impl) throws IOException {
+        
         final List<Table> ssTables = new ArrayList<>();
         Files.walkFileTree(tablesDir, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
+            
             @Override
-            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
-                if (file.toString().endsWith(TABLE_FILE_SUFFIX)) {
-                    ssTables.add(new SSTableFileChannel(file));
+            public FileVisitResult visitFile(
+                    final Path file, 
+                    final BasicFileAttributes attrs) throws IOException {
+                
+                if (checkFileName(file.getFileName().toString())) {
+                    
+                    if (impl == Implementation.FILE_CHANNEL_READ) {
+                        ssTables.add(new SSTableFileChannel(file));
+                    } else {
+                        ssTables.add(new SSTableMmap(file));
+                    }
+                    
                 }
                 return FileVisitResult.CONTINUE;
             }
+            
         });
         return ssTables;
     }
+    
+    protected static long getVersionFromName(final String fileName) {
+        final Pattern pattern = Pattern.compile(FILE_NAME_PATTERN);
+        final Matcher matcher = pattern.matcher(fileName);
+        if (matcher.matches()) {
+            return Long.valueOf(matcher.group(1));
+        } else {
+            throw new IllegalArgumentException("File name doesn't match accepted format");
+        }
+    }
 
-    /** Writes SSTable in file.
+    protected static boolean checkFileName(final String fileName) {
+        final Pattern pattern = Pattern.compile(FILE_NAME_PATTERN);
+        final Matcher matcher = pattern.matcher(fileName);
+        return matcher.matches();
+    }
+
+    /** 
+     * Writes SSTable in file.
      *
      * <p>Each cell is sequentially written in the following format:
      * - keySize (8 bytes)
@@ -84,12 +141,16 @@ public abstract class SSTable {
      *
      * @param tablesDir directory to write table
      * @param cellIterator iterator over cells, that you want to flush
+     * @param version version of table
      * @return path to the file in which the cells were written
      * @throws IOException if unable to open file
      */
-    protected static Path writeTable(final Path tablesDir, final Iterator<Cell> cellIterator) throws IOException {
+    protected static Path writeTable(
+            final Path tablesDir,
+            final Iterator<Cell> cellIterator,
+            final long version) throws IOException {
 
-        final Path tmpFile = tablesDir.resolve(System.currentTimeMillis() + TABLE_TMP_FILE_SUFFIX);
+        final Path tmpFile = tablesDir.resolve(FILE_NAME_PREFIX + version + TABLE_TMP_FILE_SUFFIX);
 
         try (FileChannel channel = FileChannel.open(tmpFile,
                 StandardOpenOption.WRITE,
@@ -132,14 +193,38 @@ public abstract class SSTable {
             channel.write(ByteBuffer.allocate(Integer.BYTES).putInt(offsetList.size()).flip());
         }
 
-        final Path newTable = tablesDir.resolve(tmpFile.toString().replace(TABLE_TMP_FILE_SUFFIX, TABLE_FILE_SUFFIX));
-        Files.move(tmpFile, newTable, StandardCopyOption.ATOMIC_MOVE);
+        final Path newTableFile = tablesDir
+                .resolve(tmpFile.toString().replace(TABLE_TMP_FILE_SUFFIX, TABLE_FILE_SUFFIX));
+        Files.move(tmpFile, newTableFile, StandardCopyOption.ATOMIC_MOVE);
 
-        return newTable;
+        return newTableFile;
     }
 
     protected abstract ByteBuffer parseKey(final int index) throws IOException;
 
     protected abstract Cell parseCell(final int index) throws IOException;
+
+    /**
+     * Flushes in-memory table to file.
+     *
+     * @param tablesDir directory to flush
+     * @param cellIterator iterator over cell
+     * @param version version of table
+     * @param impl type of implementation of SSTable abstraction
+     * @return SSTable abstraction
+     * @throws IOException if unable to open file
+     */
+    public static Table flush(
+            final Path tablesDir, 
+            final Iterator<Cell> cellIterator, 
+            final long version,
+            final Implementation impl) throws IOException {
+        
+        if (impl == Implementation.FILE_CHANNEL_READ) {
+            return new SSTableFileChannel(writeTable(tablesDir, cellIterator, version));
+        } else {
+            return new SSTableMmap(writeTable(tablesDir, cellIterator, version));
+        }
+    }
 
 }

@@ -12,14 +12,24 @@ import java.util.TreeMap;
 public class MemTable implements Table {
 
     private final NavigableMap<ByteBuffer, Value> db = new TreeMap<>();
-    private long size;
+    private long size;    
+    private final long version;
+
+    /**
+     * Implementation of in-memory table.
+     * 
+     * @param version version of current table
+     */
+    public MemTable(final long version) {
+        this.version = version;
+    }
 
     @Override
     public Iterator<Cell> iterator(@NotNull final ByteBuffer from) {
 
         final Iterator<Map.Entry<ByteBuffer, Value>> entryIter = db.tailMap(from).entrySet().iterator();
 
-        return Iterators.transform(entryIter, entry -> Cell.create(entry.getKey(), entry.getValue()));
+        return Iterators.transform(entryIter, entry -> Cell.create(entry.getKey(), entry.getValue(), version));
     }
 
     @Override
@@ -52,6 +62,11 @@ public class MemTable implements Table {
     @Override
     public long getSize() {
         return size;
+    }
+
+    @Override
+    public long getVersion() {
+        return version;
     }
 
 }

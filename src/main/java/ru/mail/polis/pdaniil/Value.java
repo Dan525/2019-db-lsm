@@ -2,7 +2,7 @@ package ru.mail.polis.pdaniil;
 
 import java.nio.ByteBuffer;
 
-public final class Value implements Comparable<Value> {
+final class Value implements Comparable<Value> {
 
     private final long timeStamp;
     private final boolean tombstone;
@@ -14,12 +14,12 @@ public final class Value implements Comparable<Value> {
         this.data = data;
     }
 
-    public static Value of(final ByteBuffer value) {
-        return new Value(System.currentTimeMillis(), false, value);
+    public static Value of(final ByteBuffer data) {
+        return new Value(System.currentTimeMillis(), false, data);
     }
 
-    public static Value of(final long timeStamp, final ByteBuffer value) {
-        return new Value(timeStamp, false, value);
+    public static Value of(final long timeStamp, final ByteBuffer data) {
+        return new Value(timeStamp, false, data);
     }
 
     public static Value tombstone() {
@@ -45,7 +45,7 @@ public final class Value implements Comparable<Value> {
     @Override
     public int compareTo(final Value o) {
         //"this" is lower if his timestamp is bigger
-        return (int) (o.timeStamp - this.timeStamp);
+        return Long.compare(o.getTimeStamp(), this.getTimeStamp());
     }
 
 }

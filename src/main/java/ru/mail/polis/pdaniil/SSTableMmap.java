@@ -8,7 +8,6 @@ import java.nio.ByteOrder;
 import java.nio.LongBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
@@ -18,7 +17,6 @@ public class SSTableMmap extends SSTable implements Table {
     private final int rowCount;
     private final LongBuffer offsetArray;
     private final ByteBuffer dataArray;
-    private final long size;
 
     /** MMapped SSTable implementation.
      *
@@ -26,7 +24,8 @@ public class SSTableMmap extends SSTable implements Table {
      * @throws IOException if unable to read SSTable files
      */
     public SSTableMmap(final Path file) throws IOException {
-
+        super(file);
+        
         MappedByteBuffer mappped = null;
 
         try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
@@ -51,9 +50,6 @@ public class SSTableMmap extends SSTable implements Table {
         final ByteBuffer dataDuplicate = mappped.duplicate();
         dataDuplicate.limit(offsetArrayOff);
         dataArray = dataDuplicate.slice().asReadOnlyBuffer();
-
-        size = Files.size(file);
-
     }
 
     @Override
@@ -78,17 +74,22 @@ public class SSTableMmap extends SSTable implements Table {
 
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
-        throw new UnsupportedOperationException("SSTableMmap is immutable");
+        throw new UnsupportedOperationException("SSTable is immutable");
     }
 
     @Override
     public void remove(@NotNull final ByteBuffer key) {
-        throw new UnsupportedOperationException("SSTableMmap is immutable");
+        throw new UnsupportedOperationException("SSTable is immutable");
     }
 
     @Override
     public long getSize() {
         return size;
+    }
+
+    @Override
+    public long getVersion() {
+        return version;
     }
 
     private long receiveOffset(final int index) {
@@ -131,13 +132,13 @@ public class SSTableMmap extends SSTable implements Table {
         final boolean tombstone = valueDuplicate.get() != 0;
 
         if (tombstone) {
-            return Cell.create(key, Value.tombstone(timeStamp));
+            return Cell.create(key, Value.tombstone(timeStamp), getVersion());
         } else {
             final long valueSize = valueDuplicate.getLong();
             valueDuplicate.limit((int) (valueDuplicate.position() + valueSize));
             final ByteBuffer value = valueDuplicate.slice();
 
-            return Cell.create(key, Value.of(timeStamp, value));
+            return Cell.create(key, Value.of(timeStamp, value), getVersion());
         }
     }
 
@@ -145,9 +146,4 @@ public class SSTableMmap extends SSTable implements Table {
     protected Cell parseCell(final int index) {
         return parseCell(receiveOffset(index));
     }
-
-    public static Table flush(final Path tablesDir, final Iterator<Cell> cellIterator) throws IOException {
-        return new SSTableMmap(writeTable(tablesDir, cellIterator));
-    }
-
 }

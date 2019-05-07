@@ -1,19 +1,22 @@
 package ru.mail.polis.pdaniil;
 
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 
-public final class Cell implements Comparable<Cell> {
+final class Cell implements Comparable<Cell> {
     
     private final ByteBuffer key;
     private final Value value;
+    private final long version;
 
-    private Cell(final ByteBuffer key, final Value value) {
+    private Cell(final ByteBuffer key, final Value value, final long version) {
         this.key = key;
         this.value = value;
+        this.version = version;
     }
     
-    public static Cell create(final ByteBuffer key, final Value value) {
-        return new Cell(key, value);
+    public static Cell create(final ByteBuffer key, final Value value, final long version) {
+        return new Cell(key, value, version);
     }
 
     public ByteBuffer getKey() {
@@ -24,13 +27,18 @@ public final class Cell implements Comparable<Cell> {
         return value;
     }
 
+    public long getVersion() {
+        return version;
+    }
+
     @Override
     public int compareTo(final Cell o) {
-        final int compareKey = this.getKey().compareTo(o.getKey());
-        if (compareKey == 0) {
-            return this.getValue().compareTo(o.getValue());
-        }
-        return compareKey;
+
+        return Comparator
+                .comparing(Cell::getKey)
+                .thenComparing(Cell::getValue)
+                .thenComparing(Comparator.comparingLong(Cell::getVersion).reversed())
+                .compare(this, o);
     }
     
 }

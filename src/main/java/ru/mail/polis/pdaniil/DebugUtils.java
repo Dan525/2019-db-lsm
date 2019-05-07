@@ -13,7 +13,8 @@ public final class DebugUtils {
     private DebugUtils() {
     }
 
-    /** Print in console bytes of two ByteBuffers to compare.
+    /** 
+     * Print in console bytes of two ByteBuffers to compare.
      *
      * @param my bytebuffer to check
      * @param reference reference bytebuffer
@@ -35,7 +36,8 @@ public final class DebugUtils {
         }
     }
 
-    /** Show in console info about cell.
+    /** 
+     * Show in console info about cell.
      * - is cell removed;
      * - timestamp
      *
@@ -47,7 +49,8 @@ public final class DebugUtils {
                 cell.getValue().getTimeStamp()));
     }
 
-    /** Show in console info about flushing.
+    /** 
+     * Show in console info about flushing.
      * - Current table size;
      * - Heap free
      *

@@ -14,27 +14,35 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MyDAO implements DAO {
 
-    private static final double LOAD_FACTOR = 0.05;
+    private static final double LOAD_FACTOR = 0.016;
 
     private final long allowableMemTableSize;
 
     private final Path tablesDir;
+    
+    private final AtomicLong versionCounter;
 
     private Table memTable;
     private final List<Table> ssTableList;
+    
 
-    /** DAO Implementation for LSM Database.
+    /** 
+     * DAO Implementation for LSM Database.
      *
      * @param tablesDir directory to store SSTable files
      * @param maxHeap max memory, allocated for JVM
      * @throws IOException if unable to read existing SSTable files
      */
     public MyDAO(final Path tablesDir, final long maxHeap) throws IOException {
-        memTable = new MemTable();
-        ssTableList = SSTable.findVersions(tablesDir);
+        
+        ssTableList = SSTable.findVersions(tablesDir, SSTable.Implementation.FILE_CHANNEL_READ);
+        versionCounter = new AtomicLong(ssTableList.size());
+        memTable = new MemTable(versionCounter.incrementAndGet());
+        
         this.allowableMemTableSize = (long) (maxHeap * LOAD_FACTOR);
         this.tablesDir = tablesDir;
     }
@@ -81,13 +89,25 @@ public class MyDAO implements DAO {
     private void flush() throws IOException {
         DebugUtils.flushInfo(memTable);
 
-        ssTableList.add(SSTableFileChannel.flush(tablesDir, memTable.iterator(ByteBuffer.allocate(0))));
+        ssTableList.add(SSTable.flush(
+                tablesDir, 
+                memTable.iterator(ByteBuffer.allocate(0)),
+                memTable.getVersion(),
+                SSTable.Implementation.FILE_CHANNEL_READ));
 
-        memTable = new MemTable();
+        memTable = new MemTable(versionCounter.incrementAndGet());
     }
 
     @Override
     public void close() throws IOException {
-        flush();
+        if (memTable.getSize() != 0) {
+            flush();
+        }
+        for (final Table t : ssTableList) {
+            if (t instanceof SSTableFileChannel) {
+                ((SSTableFileChannel) t).close();
+            }
+
+        }
     }
 }

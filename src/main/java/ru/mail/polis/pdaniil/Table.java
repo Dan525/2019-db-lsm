@@ -14,4 +14,6 @@ public interface Table {
     void remove(@NotNull ByteBuffer key);
 
     long getSize();
+    
+    long getVersion();
 }
