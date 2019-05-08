@@ -56,13 +56,11 @@ public class SSTableMmap extends SSTable implements Table {
     public Iterator<Cell> iterator(@NotNull final ByteBuffer from) throws IOException {
         return new Iterator<>() {
 
-            private final int lastIndex = rowCount - 1;
-
-            private int position = findStartIndex(from, 0, lastIndex);
+            private int position = findStartIndex(from, 0, rowCount - 1);
 
             @Override
             public boolean hasNext() {
-                return lastIndex >= position;
+                return position < rowCount;
             }
 
             @Override

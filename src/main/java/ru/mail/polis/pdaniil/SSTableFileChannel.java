@@ -34,13 +34,11 @@ public class SSTableFileChannel extends SSTable implements Table {
     public Iterator<Cell> iterator(@NotNull final ByteBuffer from) throws IOException {
         return new Iterator<>() {
 
-            private final int lastIndex = rowCount - 1;
-
-            private int position = findStartIndex(from, 0, lastIndex);
+            private int position = findStartIndex(from, 0, rowCount - 1);
 
             @Override
             public boolean hasNext() {
-                return position <= lastIndex;
+                return position < rowCount;
             }
 
             @Override
@@ -86,7 +84,7 @@ public class SSTableFileChannel extends SSTable implements Table {
     private long receiveOffset(final int index) throws IOException {
 
         final ByteBuffer offsetBuffer = ByteBuffer.allocate(Long.BYTES);
-        final long offsetOff = channel.size() - Integer.BYTES - Long.BYTES * (rowCount - index);
+        final long offsetOff = channel.size() - Integer.BYTES - Long.BYTES * (long) (rowCount - index);
         channel.read(offsetBuffer, offsetOff);
 
         return offsetBuffer.rewind().getLong();

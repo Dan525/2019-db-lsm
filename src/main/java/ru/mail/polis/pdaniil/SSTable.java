@@ -46,7 +46,6 @@ public abstract class SSTable {
     }
 
     protected int findStartIndex(final ByteBuffer from, final int low, final int high) throws IOException {
-
         int curLow = low;
         int curHigh = high;
 

@@ -4,7 +4,12 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 final class Cell implements Comparable<Cell> {
-    
+
+    private static final Comparator<Cell> CELL_COMPARATOR = Comparator
+            .comparing(Cell::getKey)
+            .thenComparing(Cell::getValue)
+            .thenComparing(Comparator.comparingLong(Cell::getVersion).reversed());
+
     private final ByteBuffer key;
     private final Value value;
     private final long version;
@@ -14,7 +19,7 @@ final class Cell implements Comparable<Cell> {
         this.value = value;
         this.version = version;
     }
-    
+
     public static Cell create(final ByteBuffer key, final Value value, final long version) {
         return new Cell(key, value, version);
     }
@@ -33,12 +38,7 @@ final class Cell implements Comparable<Cell> {
 
     @Override
     public int compareTo(final Cell o) {
-
-        return Comparator
-                .comparing(Cell::getKey)
-                .thenComparing(Cell::getValue)
-                .thenComparing(Comparator.comparingLong(Cell::getVersion).reversed())
-                .compare(this, o);
+        return CELL_COMPARATOR.compare(this, o);
     }
-    
+
 }
