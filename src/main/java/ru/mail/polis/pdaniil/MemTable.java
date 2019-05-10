@@ -36,13 +36,13 @@ public class MemTable implements Table {
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
         final Value prev = db.put(key, Value.of(value));
         if (prev == null) {
-            //added new key and value. calc space for them
+            // Added new key and value. Calc space for them.
             size += key.limit() + value.limit();
         } else if (prev.isRemoved()){
-            //has only key before. Calc space for value
+            // Has only key before. Calc space for value.
             size += value.limit();
         } else {
-            //has key and value before. Calc prev and new value size difference
+            // Has key and value before. Calc prev and new value size difference.
             size += value.limit() - prev.getData().limit();
         }
     }
@@ -51,10 +51,10 @@ public class MemTable implements Table {
     public void remove(@NotNull final ByteBuffer key) {
         final Value prev = db.put(key, Value.tombstone());
         if (prev == null) {
-            //Calc key size
+            // Calc key size.
             size += key.limit();
         } else if (!prev.isRemoved()) {
-            //substract prev value size
+            // Substract prev value size.
             size -= prev.getData().limit();
         }
     }

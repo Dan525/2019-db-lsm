@@ -44,7 +44,7 @@ final class Value implements Comparable<Value> {
 
     @Override
     public int compareTo(final Value o) {
-        //"this" is lower if his timestamp is bigger
+        // "this" is lower if his timestamp is bigger.
         return Long.compare(o.getTimeStamp(), this.getTimeStamp());
     }
 

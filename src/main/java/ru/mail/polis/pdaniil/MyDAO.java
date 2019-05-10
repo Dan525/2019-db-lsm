@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class MyDAO implements DAO {
 
+    private static final SSTable.Implementation SSTABLE_IMPL = SSTable.Implementation.FILE_CHANNEL_READ;
+    private static final ByteBuffer MIN_BYTE_BUFFER = ByteBuffer.allocate(0);
     private static final double LOAD_FACTOR = 0.016;
 
     private final long allowableMemTableSize;
@@ -27,7 +29,7 @@ public class MyDAO implements DAO {
     private final AtomicLong versionCounter;
 
     private Table memTable;
-    private final List<Table> ssTableList;
+    private List<Table> ssTableList;
     
 
     /** 
@@ -39,7 +41,7 @@ public class MyDAO implements DAO {
      */
     public MyDAO(final Path tablesDir, final long maxHeap) throws IOException {
         
-        ssTableList = SSTable.findVersions(tablesDir, SSTable.Implementation.FILE_CHANNEL_READ);
+        ssTableList = SSTable.findVersions(tablesDir, SSTABLE_IMPL);
         versionCounter = new AtomicLong(ssTableList.size());
         memTable = new MemTable(versionCounter.incrementAndGet());
         
@@ -50,6 +52,11 @@ public class MyDAO implements DAO {
     @NotNull
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
+
+        return Iterators.transform(cellIterator(from), cell -> Record.of(cell.getKey(), cell.getValue().getData()));
+    }
+
+    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) throws IOException {
 
         final List<Iterator<Cell>> ssIterators = new ArrayList<>();
 
@@ -64,10 +71,7 @@ public class MyDAO implements DAO {
 
         final Iterator<Cell> collapsedIter = Iters.collapseEquals(mergeSortedIter, cell -> cell.getKey());
 
-        final UnmodifiableIterator<Cell> filteredCellIter =
-                Iterators.filter(collapsedIter, cell -> !cell.getValue().isRemoved());
-
-        return Iterators.transform(filteredCellIter, cell -> Record.of(cell.getKey(), cell.getValue().getData()));
+        return Iterators.filter(collapsedIter, cell -> !cell.getValue().isRemoved());
     }
 
     @Override
@@ -91,11 +95,37 @@ public class MyDAO implements DAO {
 
         ssTableList.add(SSTable.flush(
                 tablesDir, 
-                memTable.iterator(ByteBuffer.allocate(0)),
+                memTable.iterator(MIN_BYTE_BUFFER),
                 memTable.getVersion(),
-                SSTable.Implementation.FILE_CHANNEL_READ));
+                SSTABLE_IMPL));
 
         memTable = new MemTable(versionCounter.incrementAndGet());
+    }
+
+    @Override
+    public void compact() throws IOException {
+
+        final Path actualFile = SSTable.writeTable(
+                tablesDir,
+                cellIterator(MIN_BYTE_BUFFER),
+                memTable.getVersion());
+
+        closeSSTables();
+        SSTable.removeOldVersions(tablesDir, actualFile);
+        ssTableList = SSTable.findVersions(tablesDir, SSTABLE_IMPL);
+
+        assert ssTableList.size() == SSTable.MIN_TABLE_VERSION;
+        versionCounter.set(SSTable.MIN_TABLE_VERSION);
+
+        memTable = new MemTable(versionCounter.incrementAndGet());
+    }
+
+    private void closeSSTables() throws IOException {
+        for (final Table t : ssTableList) {
+            if (t instanceof SSTableFileChannel) {
+                ((SSTableFileChannel) t).close();
+            }
+        }
     }
 
     @Override
@@ -103,11 +133,6 @@ public class MyDAO implements DAO {
         if (memTable.getSize() != 0) {
             flush();
         }
-        for (final Table t : ssTableList) {
-            if (t instanceof SSTableFileChannel) {
-                ((SSTableFileChannel) t).close();
-            }
-
-        }
+        closeSSTables();
     }
 }

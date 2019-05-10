@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 public abstract class SSTable {
 
+    protected static final long MIN_TABLE_VERSION = 1;
     protected static final String TABLE_FILE_SUFFIX = ".dat";
     protected static final String TABLE_TMP_FILE_SUFFIX = ".tmp";
     protected static final String FILE_NAME_PREFIX = "table_";
@@ -70,13 +71,13 @@ public abstract class SSTable {
     /** 
      * Finds versions of SSTables in given directory.
      *
-     * @param tablesDir directory to find SSTable files.
+     * @param tablesDir directory to find SSTable files
      * @param impl type of SSTable implementation
      * @return list of SSTable abstractions
      * @throws IOException if unable to read directory
      */
-    public static List<Table> findVersions(
-            final Path tablesDir, 
+    protected static List<Table> findVersions(
+            final Path tablesDir,
             final Implementation impl) throws IOException {
         
         final List<Table> ssTables = new ArrayList<>();
@@ -101,6 +102,53 @@ public abstract class SSTable {
             
         });
         return ssTables;
+    }
+
+    /**
+     * Removes old versions of SSTables and reset version of actual SSTable file to min value.
+     *
+     * @param tablesDir directory to find SSTable files
+     * @param actualFile file with actual version of SSTable
+     * @throws IOException if unable to read directory
+     */
+    protected static void removeOldVersions(final Path tablesDir, final Path actualFile) throws IOException {
+
+        Files.walkFileTree(tablesDir, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
+
+            @Override
+            public FileVisitResult visitFile(
+                    final Path file,
+                    final BasicFileAttributes attrs) throws IOException {
+
+                if (!file.equals(actualFile)) {
+                    Files.delete(file);
+                }
+
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                resetTableVersion(actualFile);
+                return FileVisitResult.CONTINUE;
+            }
+
+            private void resetTableVersion(final Path tableFile) throws IOException {
+                changeTableVersion(tableFile, MIN_TABLE_VERSION);
+            }
+        });
+    }
+
+    private static void changeTableVersion(final Path tableFile, final long newVersion) throws IOException {
+        Files.move(tableFile, tableFile.resolveSibling(createName(newVersion)), StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    private static String createTmpName(final long version) {
+        return FILE_NAME_PREFIX + version + TABLE_TMP_FILE_SUFFIX;
+    }
+
+    private static String createName(final long version) {
+        return FILE_NAME_PREFIX + version + TABLE_FILE_SUFFIX;
     }
     
     protected static long getVersionFromName(final String fileName) {
@@ -144,12 +192,12 @@ public abstract class SSTable {
      * @return path to the file in which the cells were written
      * @throws IOException if unable to open file
      */
-    protected static Path writeTable(
+    static Path writeTable(
             final Path tablesDir,
             final Iterator<Cell> cellIterator,
             final long version) throws IOException {
 
-        final Path tmpFile = tablesDir.resolve(FILE_NAME_PREFIX + version + TABLE_TMP_FILE_SUFFIX);
+        final Path tmpFile = tablesDir.resolve(createTmpName(version));
 
         try (FileChannel channel = FileChannel.open(tmpFile,
                 StandardOpenOption.WRITE,
