@@ -128,7 +128,7 @@ public abstract class SSTable {
             }
 
             @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            public FileVisitResult postVisitDirectory(final Path dir, final IOException exc) throws IOException {
                 resetTableVersion(actualFile);
                 return FileVisitResult.CONTINUE;
             }
