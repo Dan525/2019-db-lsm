@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
-public class SSTableFileChannel extends SSTable implements Table {
+public class SSTableFileChannel extends SSTable {
 
     private final FileChannel channel;
     private final int rowCount;
@@ -24,10 +24,6 @@ public class SSTableFileChannel extends SSTable implements Table {
         super(file);
         channel = FileChannel.open(file, StandardOpenOption.READ);
         rowCount = receiveRowCount();
-    }
-    
-    public static Table create(final Path file) throws IOException {
-        return new SSTableFileChannel(file);
     }
 
     @Override

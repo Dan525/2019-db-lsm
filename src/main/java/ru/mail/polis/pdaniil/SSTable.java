@@ -1,5 +1,7 @@
 package ru.mail.polis.pdaniil;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -18,9 +20,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public abstract class SSTable {
+public abstract class SSTable implements Table {
 
-    protected static final long MIN_TABLE_VERSION = 1;
+    protected static final int MIN_TABLE_VERSION = 1;
     protected static final String TABLE_FILE_SUFFIX = ".dat";
     protected static final String TABLE_TMP_FILE_SUFFIX = ".tmp";
     protected static final String TABLE_FILE_PREFIX = "table_";
@@ -76,11 +78,11 @@ public abstract class SSTable {
      * @return list of SSTable abstractions
      * @throws IOException if unable to read directory
      */
-    protected static List<Table> findVersions(
+    protected static List<SSTable> findVersions(
             final Path tablesDir,
             final Implementation impl) throws IOException {
         
-        final List<Table> ssTables = new ArrayList<>();
+        final List<SSTable> ssTables = new ArrayList<>();
         Files.walkFileTree(tablesDir, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
             
             @Override
@@ -247,6 +249,16 @@ public abstract class SSTable {
         return newTableFile;
     }
 
+    public abstract Iterator<Cell> iterator(@NotNull ByteBuffer from) throws IOException;
+
+    public abstract void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value);
+
+    public abstract void remove(@NotNull ByteBuffer key);
+
+    public abstract long getSize();
+
+    public abstract long getVersion();
+
     protected abstract ByteBuffer parseKey(final int index) throws IOException;
 
     protected abstract Cell parseCell(final int index) throws IOException;
@@ -261,7 +273,7 @@ public abstract class SSTable {
      * @return SSTable abstraction
      * @throws IOException if unable to open file
      */
-    public static Table flush(
+    public static SSTable flush(
             final Path tablesDir, 
             final Iterator<Cell> cellIterator, 
             final long version,

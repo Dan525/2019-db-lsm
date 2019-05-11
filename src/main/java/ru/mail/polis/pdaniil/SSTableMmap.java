@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
-public class SSTableMmap extends SSTable implements Table {
+public class SSTableMmap extends SSTable {
 
     private final int rowCount;
     private final LongBuffer offsetArray;

@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class MyDAO implements DAO {
 
@@ -26,26 +25,10 @@ public class MyDAO implements DAO {
 
     private final Path tablesDir;
     
-    private final AtomicLong versionCounter;
+    private int versionCounter;
 
-    private Table memTable;
-    private List<Table> ssTableList;
-
-    enum IterMode {
-
-        VALUE_SEARCH(true),
-        COMPACTION(false);
-
-        private boolean includeMemTable;
-
-        IterMode(final boolean includeMemTable) {
-            this.includeMemTable = includeMemTable;
-        }
-
-        private boolean get() {
-            return includeMemTable;
-        }
-    }
+    private MemTable memTable;
+    private List<SSTable> ssTableList;
 
     /** 
      * DAO Implementation for LSM Database.
@@ -57,8 +40,8 @@ public class MyDAO implements DAO {
     public MyDAO(final Path tablesDir, final long maxHeap) throws IOException {
         
         ssTableList = SSTable.findVersions(tablesDir, SSTABLE_IMPL);
-        versionCounter = new AtomicLong(ssTableList.size());
-        memTable = new MemTable(versionCounter.incrementAndGet());
+        versionCounter = ssTableList.size();
+        memTable = new MemTable(++versionCounter);
         
         this.allowableMemTableSize = (long) (maxHeap * LOAD_FACTOR);
         this.tablesDir = tablesDir;
@@ -69,21 +52,21 @@ public class MyDAO implements DAO {
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
 
         return Iterators.transform(
-                cellIterator(from, IterMode.VALUE_SEARCH),
+                cellIterator(from, true),
                 cell -> Record.of(cell.getKey(), cell.getValue().getData()));
     }
 
     private Iterator<Cell> cellIterator(
             @NotNull final ByteBuffer from,
-            final IterMode includeMemTable) throws IOException {
+            final boolean includeMemTable) throws IOException {
 
         final List<Iterator<Cell>> ssIterators = new ArrayList<>();
 
-        for (final Table ssTable : ssTableList) {
+        for (final SSTable ssTable : ssTableList) {
             ssIterators.add(ssTable.iterator(from));
         }
 
-        if (includeMemTable.get()) {
+        if (includeMemTable) {
             ssIterators.add(memTable.iterator(from));
         }
 
@@ -120,7 +103,7 @@ public class MyDAO implements DAO {
                 memTable.getVersion(),
                 SSTABLE_IMPL));
 
-        memTable = new MemTable(versionCounter.incrementAndGet());
+        memTable = new MemTable(++versionCounter);
     }
 
     @Override
@@ -128,7 +111,7 @@ public class MyDAO implements DAO {
 
         final Path actualFile = SSTable.writeTable(
                 tablesDir,
-                cellIterator(MIN_BYTE_BUFFER, IterMode.COMPACTION),
+                cellIterator(MIN_BYTE_BUFFER, false),
                 memTable.getVersion());
 
         closeSSTables();
@@ -136,13 +119,13 @@ public class MyDAO implements DAO {
         ssTableList = SSTable.findVersions(tablesDir, SSTABLE_IMPL);
 
         assert ssTableList.size() == SSTable.MIN_TABLE_VERSION;
-        versionCounter.set(SSTable.MIN_TABLE_VERSION);
+        versionCounter = SSTable.MIN_TABLE_VERSION;
 
-        ((MemTable) memTable).setVersion(versionCounter.incrementAndGet());
+        memTable.setVersion(++versionCounter);
     }
 
     private void closeSSTables() throws IOException {
-        for (final Table t : ssTableList) {
+        for (final SSTable t : ssTableList) {
             if (t instanceof SSTableFileChannel) {
                 ((SSTableFileChannel) t).close();
             }
