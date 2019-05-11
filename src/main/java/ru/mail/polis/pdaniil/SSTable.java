@@ -145,10 +145,6 @@ public abstract class SSTable implements Table {
         Files.move(tableFile, tableFile.resolveSibling(createName(newVersion)), StandardCopyOption.ATOMIC_MOVE);
     }
 
-    private static String createTmpName(final long version) {
-        return TABLE_FILE_PREFIX + version + TABLE_TMP_FILE_SUFFIX;
-    }
-
     private static String createName(final long version) {
         return TABLE_FILE_PREFIX + version + TABLE_FILE_SUFFIX;
     }
@@ -199,7 +195,7 @@ public abstract class SSTable implements Table {
             final Iterator<Cell> cellIterator,
             final long version) throws IOException {
 
-        final Path tmpFile = tablesDir.resolve(createTmpName(version));
+        final Path tmpFile = tablesDir.resolve(TABLE_FILE_PREFIX + version + TABLE_TMP_FILE_SUFFIX);
 
         try (FileChannel channel = FileChannel.open(tmpFile,
                 StandardOpenOption.WRITE,
