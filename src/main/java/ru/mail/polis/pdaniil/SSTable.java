@@ -113,7 +113,7 @@ public abstract class SSTable implements Table {
      * @param actualFile file with actual version of SSTable
      * @throws IOException if unable to read directory
      */
-    protected static void removeOldVersions(final Path tablesDir, final Path actualFile) throws IOException {
+    protected static void removeOldVersionsAndResetCounter(final Path tablesDir, final Path actualFile) throws IOException {
 
         Files.walkFileTree(tablesDir, EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
 

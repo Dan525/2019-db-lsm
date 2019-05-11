@@ -115,7 +115,7 @@ public class MyDAO implements DAO {
                 memTable.getVersion());
 
         closeSSTables();
-        SSTable.removeOldVersions(tablesDir, actualFile);
+        SSTable.removeOldVersionsAndResetCounter(tablesDir, actualFile);
         ssTableList = SSTable.findVersions(tablesDir, SSTABLE_IMPL);
 
         assert ssTableList.size() == SSTable.MIN_TABLE_VERSION;
