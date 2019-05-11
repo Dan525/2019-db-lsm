@@ -30,7 +30,22 @@ public class MyDAO implements DAO {
 
     private Table memTable;
     private List<Table> ssTableList;
-    
+
+    enum IterMode {
+
+        VALUE_SEARCH(true),
+        COMPACTION(false);
+
+        private boolean includeMemTable;
+
+        IterMode(boolean includeMemTable) {
+            this.includeMemTable = includeMemTable;
+        }
+
+        private boolean get() {
+            return includeMemTable;
+        }
+    }
 
     /** 
      * DAO Implementation for LSM Database.
@@ -53,10 +68,10 @@ public class MyDAO implements DAO {
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
 
-        return Iterators.transform(cellIterator(from), cell -> Record.of(cell.getKey(), cell.getValue().getData()));
+        return Iterators.transform(cellIterator(from, IterMode.VALUE_SEARCH), cell -> Record.of(cell.getKey(), cell.getValue().getData()));
     }
 
-    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) throws IOException {
+    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from, IterMode includeMemTable) throws IOException {
 
         final List<Iterator<Cell>> ssIterators = new ArrayList<>();
 
@@ -64,12 +79,14 @@ public class MyDAO implements DAO {
             ssIterators.add(ssTable.iterator(from));
         }
 
-        ssIterators.add(memTable.iterator(from));
+        if (includeMemTable.get()) {
+            ssIterators.add(memTable.iterator(from));
+        }
 
         final UnmodifiableIterator<Cell> mergeSortedIter =
                 Iterators.mergeSorted(ssIterators, Comparator.naturalOrder());
 
-        final Iterator<Cell> collapsedIter = Iters.collapseEquals(mergeSortedIter, cell -> cell.getKey());
+        final Iterator<Cell> collapsedIter = Iters.collapseEquals(mergeSortedIter, Cell::getKey);
 
         return Iterators.filter(collapsedIter, cell -> !cell.getValue().isRemoved());
     }
@@ -107,7 +124,7 @@ public class MyDAO implements DAO {
 
         final Path actualFile = SSTable.writeTable(
                 tablesDir,
-                cellIterator(MIN_BYTE_BUFFER),
+                cellIterator(MIN_BYTE_BUFFER, IterMode.COMPACTION),
                 memTable.getVersion());
 
         closeSSTables();
@@ -117,7 +134,7 @@ public class MyDAO implements DAO {
         assert ssTableList.size() == SSTable.MIN_TABLE_VERSION;
         versionCounter.set(SSTable.MIN_TABLE_VERSION);
 
-        memTable = new MemTable(versionCounter.incrementAndGet());
+        ((MemTable) memTable).setVersion(versionCounter.incrementAndGet());
     }
 
     private void closeSSTables() throws IOException {

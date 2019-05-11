@@ -12,12 +12,12 @@ import java.util.TreeMap;
 public class MemTable implements Table {
 
     private final NavigableMap<ByteBuffer, Value> db = new TreeMap<>();
-    private long size;    
-    private final long version;
+    private long size;
+    private long version;
 
     /**
      * Implementation of in-memory table.
-     * 
+     *
      * @param version version of current table
      */
     public MemTable(final long version) {
@@ -38,7 +38,7 @@ public class MemTable implements Table {
         if (prev == null) {
             // Added new key and value. Calc space for them.
             size += key.limit() + value.limit();
-        } else if (prev.isRemoved()){
+        } else if (prev.isRemoved()) {
             // Has only key before. Calc space for value.
             size += value.limit();
         } else {
@@ -69,4 +69,7 @@ public class MemTable implements Table {
         return version;
     }
 
+    public void setVersion(long version) {
+        this.version = version;
+    }
 }

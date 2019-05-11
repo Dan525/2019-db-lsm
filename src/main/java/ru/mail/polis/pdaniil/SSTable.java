@@ -23,8 +23,8 @@ public abstract class SSTable {
     protected static final long MIN_TABLE_VERSION = 1;
     protected static final String TABLE_FILE_SUFFIX = ".dat";
     protected static final String TABLE_TMP_FILE_SUFFIX = ".tmp";
-    protected static final String FILE_NAME_PREFIX = "table_";
-    protected static final String FILE_NAME_PATTERN = FILE_NAME_PREFIX + "(\\d+)" + TABLE_FILE_SUFFIX;
+    protected static final String TABLE_FILE_PREFIX = "table_";
+    protected static final String FILE_NAME_PATTERN = TABLE_FILE_PREFIX + "(\\d+)" + TABLE_FILE_SUFFIX;
     
     protected final Path file;
     protected final long size;
@@ -38,7 +38,7 @@ public abstract class SSTable {
     /**
      * Base implementation of SSTable.
      * 
-     * @param file directory of SSTable files
+     * @param file SSTable file
      */
     public SSTable(final Path file) throws IOException {
         this.file = file;
@@ -144,11 +144,11 @@ public abstract class SSTable {
     }
 
     private static String createTmpName(final long version) {
-        return FILE_NAME_PREFIX + version + TABLE_TMP_FILE_SUFFIX;
+        return TABLE_FILE_PREFIX + version + TABLE_TMP_FILE_SUFFIX;
     }
 
     private static String createName(final long version) {
-        return FILE_NAME_PREFIX + version + TABLE_FILE_SUFFIX;
+        return TABLE_FILE_PREFIX + version + TABLE_FILE_SUFFIX;
     }
     
     protected static long getVersionFromName(final String fileName) {
