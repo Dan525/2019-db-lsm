@@ -69,7 +69,7 @@ public class MemTable implements Table {
         return version;
     }
 
-    public void setVersion(long version) {
+    public void setVersion(final long version) {
         this.version = version;
     }
 }

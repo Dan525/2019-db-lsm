@@ -38,7 +38,7 @@ public class MyDAO implements DAO {
 
         private boolean includeMemTable;
 
-        IterMode(boolean includeMemTable) {
+        IterMode(final boolean includeMemTable) {
             this.includeMemTable = includeMemTable;
         }
 
@@ -68,10 +68,14 @@ public class MyDAO implements DAO {
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
 
-        return Iterators.transform(cellIterator(from, IterMode.VALUE_SEARCH), cell -> Record.of(cell.getKey(), cell.getValue().getData()));
+        return Iterators.transform(
+                cellIterator(from, IterMode.VALUE_SEARCH),
+                cell -> Record.of(cell.getKey(), cell.getValue().getData()));
     }
 
-    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from, IterMode includeMemTable) throws IOException {
+    private Iterator<Cell> cellIterator(
+            @NotNull final ByteBuffer from,
+            final IterMode includeMemTable) throws IOException {
 
         final List<Iterator<Cell>> ssIterators = new ArrayList<>();
 
